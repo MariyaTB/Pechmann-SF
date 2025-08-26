@@ -2,12 +2,18 @@
 import os
 import csv
 import re
+import sys
+
+# Get folder path from command-line argument, default is current folder
+if len(sys.argv) > 1:
+    log_folder = sys.argv[1]
+else:
+    log_folder = "."
 
 csv_file = "excitation_energies.csv"
 
 # Initialize CSV with header if it doesn't exist
-header = ["filename", "triplet1_eV", "triplet2_eV", "singlet1_eV",
-          "2T1_minus_S1", "2T1_minus_T2", "HOMO", "LUMO"]
+header = ["Filename", "T1", "T2", "S1", "2T1-S1", "2T1-T2", "HOMO", "LUMO"]
 
 if not os.path.exists(csv_file):
     with open(csv_file, "w", newline="") as f:
@@ -15,8 +21,8 @@ if not os.path.exists(csv_file):
         writer.writerow(header)
 
 def extract_values(filepath):
-    triplets, singlets = [], []
-    homo, lumo = None, None
+    T_vals, S_vals = [], []
+    HOMO, LUMO = None, None
 
     with open(filepath, "r", errors="ignore") as f:
         lines = f.readlines()
@@ -27,11 +33,11 @@ def extract_values(filepath):
             if "Triplet-A" in line:
                 match = re.search(r"Triplet-A\s+(\d+\.\d+)", line)
                 if match:
-                    triplets.append(float(match.group(1)))
+                    T_vals.append(float(match.group(1)))
             elif "Singlet-A" in line:
                 match = re.search(r"Singlet-A\s+(\d+\.\d+)", line)
                 if match:
-                    singlets.append(float(match.group(1)))
+                    S_vals.append(float(match.group(1)))
 
     # Extract HOMO (last Alpha occ. eigenvalues line)
     for line in reversed(lines):
@@ -39,7 +45,7 @@ def extract_values(filepath):
             parts = line.split("--")
             if len(parts) > 1:
                 values = parts[1].split()
-                homo = float(values[-1]) if values else None
+                HOMO = float(values[-1]) if values else None
             break
 
     # Extract LUMO (first Alpha virt. eigenvalues line)
@@ -48,20 +54,20 @@ def extract_values(filepath):
             parts = line.split("--")
             if len(parts) > 1:
                 values = parts[1].split()
-                lumo = float(values[0]) if values else None
+                LUMO = float(values[0]) if values else None
             break
 
     # Assign values
-    triplet1 = triplets[0] if len(triplets) > 0 else None
-    triplet2 = triplets[1] if len(triplets) > 1 else None
-    singlet1 = singlets[0] if len(singlets) > 0 else None
+    T1 = T_vals[0] if len(T_vals) > 0 else None
+    T2 = T_vals[1] if len(T_vals) > 1 else None
+    S1 = S_vals[0] if len(S_vals) > 0 else None
 
     # Calculations
-    twot1_minus_s1 = (2*triplet1 - singlet1) if (triplet1 is not None and singlet1 is not None) else None
-    twot1_minus_t2 = (2*triplet1 - triplet2) if (triplet1 is not None and triplet2 is not None) else None
+    twot1_minus_s1 = (2*T1 - S1) if (T1 is not None and S1 is not None) else None
+    twot1_minus_t2 = (2*T1 - T2) if (T1 is not None and T2 is not None) else None
 
-    return [os.path.basename(filepath), triplet1, triplet2, singlet1,
-            twot1_minus_s1, twot1_minus_t2, homo, lumo]
+    return [os.path.basename(filepath), T1, T2, S1,
+            twot1_minus_s1, twot1_minus_t2, HOMO, LUMO]
 
 # Read existing filenames from CSV to avoid duplicates
 existing_files = set()
@@ -72,11 +78,12 @@ with open(csv_file, "r") as f:
         if row:
             existing_files.add(row[0])
 
-# Process all .log files
+# Process all .log files in the given folder
 results = []
-for file in os.listdir("."):
+for file in os.listdir(log_folder):
     if file.endswith(".log") and file not in existing_files:
-        results.append(extract_values(file))
+        filepath = os.path.join(log_folder, file)
+        results.append(extract_values(filepath))
 
 # Append new rows
 if results:
@@ -95,3 +102,4 @@ with open(csv_file, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(data)
+
