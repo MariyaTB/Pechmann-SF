@@ -27,17 +27,18 @@ def extract_values(filepath):
     with open(filepath, "r", errors="ignore") as f:
         lines = f.readlines()
 
-    # Extract excited states
+    # Extract excited states (Triplet-X or Singlet-X, X = A/B/C/...)
     for line in lines:
         if "Excited State" in line:
-            if "Triplet-A" in line:
-                match = re.search(r"Triplet-A\s+(\d+\.\d+)", line)
-                if match:
-                    T_vals.append(float(match.group(1)))
-            elif "Singlet-A" in line:
-                match = re.search(r"Singlet-A\s+(\d+\.\d+)", line)
-                if match:
-                    S_vals.append(float(match.group(1)))
+            # Match Triplet states (any suffix letter)
+            match_triplet = re.search(r"Triplet-[A-Z]\s+(\d+\.\d+)", line)
+            if match_triplet:
+                T_vals.append(float(match_triplet.group(1)))
+
+            # Match Singlet states (any suffix letter)
+            match_singlet = re.search(r"Singlet-[A-Z]\s+(\d+\.\d+)", line)
+            if match_singlet:
+                S_vals.append(float(match_singlet.group(1)))
 
     # Extract HOMO (last Alpha occ. eigenvalues line)
     for line in reversed(lines):
@@ -57,7 +58,7 @@ def extract_values(filepath):
                 LUMO = float(values[0]) if values else None
             break
 
-    # Assign values
+    # Assign values (first two triplets and first singlet only)
     T1 = T_vals[0] if len(T_vals) > 0 else None
     T2 = T_vals[1] if len(T_vals) > 1 else None
     S1 = S_vals[0] if len(S_vals) > 0 else None
@@ -102,4 +103,3 @@ with open(csv_file, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(data)
-
