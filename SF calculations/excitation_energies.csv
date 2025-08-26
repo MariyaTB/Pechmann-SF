@@ -1,2 +1,2 @@
-filename,triplet1_eV,triplet2_eV,singlet1_eV,2T1_minus_S1,2T1_minus_T2,HOMO,LUMO
+Filename,T1,T2,S1,2T1-S1,2T1-T2,HOMO,LUMO
 M2 ENERGY.log,0.9763,2.9771,2.7853,-0.8327,-1.0245000000000002,-0.24927,
