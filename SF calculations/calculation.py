@@ -31,12 +31,12 @@ def extract_values(filepath):
     for line in lines:
         if "Excited State" in line:
             # Match Triplet states (any suffix letter)
-            match_triplet = re.search(r"Triplet-[A-Z]\s+(\d+\.\d+)", line)
+            match_triplet = re.search(r"Triplet\s+(\d+\.\d+)", line)
             if match_triplet:
                 T_vals.append(float(match_triplet.group(1)))
 
             # Match Singlet states (any suffix letter)
-            match_singlet = re.search(r"Singlet-[A-Z]\s+(\d+\.\d+)", line)
+            match_singlet = re.search(r"Singlet\s+(\d+\.\d+)", line)
             if match_singlet:
                 S_vals.append(float(match_singlet.group(1)))
 
