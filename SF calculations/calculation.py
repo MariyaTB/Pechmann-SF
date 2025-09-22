@@ -27,7 +27,7 @@ def extract_values(filepath):
     with open(filepath, "r", errors="ignore") as f:
         lines = f.readlines()
 
-    # Extract excited states (Triplet-X or Singlet-X, X = A/B/C/...)
+    # Extract excited states (Triplet or Singlet, X = A/B/C/...)
     for line in lines:
         if "Excited State" in line:
             # Match Triplet states (any suffix letter)
