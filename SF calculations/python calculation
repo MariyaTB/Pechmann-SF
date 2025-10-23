@@ -1,0 +1,104 @@
+import os
+import csv
+import re
+import sys
+
+# Get folder path from command-line argument, default is current folder
+if len(sys.argv) > 1:
+    log_folder = sys.argv[1]
+else:
+    log_folder = "."
+
+csv_file = "excitation_energies.csv"
+
+# Initialize CSV with header if it doesn't exist
+header = ["Filename", "T1", "T2", "S1", "2T1-S1", "2T1-T2", "HOMO", "LUMO"]
+
+if not os.path.exists(csv_file):
+    with open(csv_file, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+
+def extract_values(filepath):
+    T_vals, S_vals = [], []
+    HOMO, LUMO = None, None
+
+    with open(filepath, "r", errors="ignore") as f:
+        lines = f.readlines()
+
+    # Extract excited states (Triplet or Singlet, X = A/B/C/...)
+    for line in lines:
+        if "Excited State" in line:
+            # Match Triplet states (any suffix letter)
+            match_triplet = re.search(r"Triplet", line)
+            if match_triplet:
+                T_vals.append(float(match_triplet.group(1)))
+
+            # Match Singlet states (any suffix letter)
+            match_singlet = re.search(r"Singlet", line)
+            if match_singlet:
+                S_vals.append(float(match_singlet.group(1)))
+
+    # Extract HOMO (last Alpha occ. eigenvalues line)
+    for line in reversed(lines):
+        if "Alpha  occ. eigenvalues" in line:
+            parts = line.split("--")
+            if len(parts) > 1:
+                values = parts[1].split()
+                HOMO = float(values[-1]) if values else None
+            break
+
+    # Extract LUMO (first Alpha virt. eigenvalues line)
+    for line in lines:
+        if "Alpha  virt. eigenvalues" in line:
+            parts = line.split("--")
+            if len(parts) > 1:
+                values = parts[1].split()
+                LUMO = float(values[0]) if values else None
+            break
+
+    # Assign values (first two triplets and first singlet only)
+    T1 = T_vals[0] if len(T_vals) > 0 else None
+    T2 = T_vals[1] if len(T_vals) > 1 else None
+    S1 = S_vals[0] if len(S_vals) > 0 else None
+
+    # Calculations
+    twot1_minus_s1 = (2*T1 - S1) if (T1 is not None and S1 is not None) else None
+    twot1_minus_t2 = (2*T1 - T2) if (T1 is not None and T2 is not None) else None
+
+    return [os.path.basename(filepath), T1, T2, S1,
+            twot1_minus_s1, twot1_minus_t2, HOMO, LUMO]
+
+# Read existing filenames from CSV to avoid duplicates
+existing_files = set()
+with open(csv_file, "r") as f:
+    reader = csv.reader(f)
+    next(reader)  # skip header
+    for row in reader:
+        if row:
+            existing_files.add(row[0])
+
+# Process all .log files in the given folder
+results = []
+for file in os.listdir(log_folder):
+    if file.endswith(".log") and file not in existing_files:
+        filepath = os.path.join(log_folder, file)
+        results.append(extract_values(filepath))
+
+# Append new rows
+if results:
+    with open(csv_file, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(results)
+
+# Sort CSV by filename (descending, like sort -r)
+with open(csv_file, "r") as f:
+    rows = list(csv.reader(f))
+
+header, data = rows[0], rows[1:]
+data.sort(key=lambda x: x[0], reverse=True)
+
+with open(csv_file, "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(header)
+    writer.writerows(data)
